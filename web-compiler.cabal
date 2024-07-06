@@ -1,0 +1,72 @@
+cabal-version: 2.4
+name: web-compiler
+version: 0.1.0.0
+-- synopsis:
+-- description:
+-- bug-reports:
+-- license:
+license-file: LICENSE
+author: Job Hernandez
+maintainer: hj93@protonmail.com 
+-- copyright:
+category: Web
+
+extra-source-files: README.md, ChangeLog.md
+
+library
+  exposed-modules:
+      CBackend
+      Compiler
+      Parser
+      ToC
+      ToMon
+      ToStack
+      ToExposeAlloc
+      ToSelect
+      ToX86
+  hs-source-dirs:
+      src
+  build-depends:
+      base, array, containers, text
+  default-language: Haskell2010
+
+executable web-service
+  main-is: WebService.hs
+  hs-source-dirs:
+      app
+  build-depends:
+      base,
+      web-compiler,
+      servant-server,
+      servant,
+      aeson,
+      attoparsec,
+      base-compat,
+      bytestring,
+      containers,
+      directory,
+      http-api-data,
+      http-client,
+      http-media,
+      http-types,
+      mtl,
+      string-conversions,
+      text,
+      transformers,
+      wai,
+      warp,
+      blaze-html >= 0.9.0.1 && < 0.10,
+      blaze-markup >= 0.8.0.0 && < 0.9,
+      cookie >= 0.4.3 && < 0.5,
+      js-jquery >= 3.3.1 && < 3.4,
+      lucid >= 2.9.11 && < 2.12,
+      random >= 1.1 && < 1.3,
+      servant-js >= 0.9 && < 0.10,
+      time >= 1.6.0.1 && < 1.13,
+      postgresql-simple,
+      resource-pool
+  default-language: Haskell2010
+
+build-tools:
+  happy >=1.19.5,
+  alex >=3.1.7
