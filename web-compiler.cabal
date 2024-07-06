@@ -1,9 +1,7 @@
 cabal-version: 2.4
 name: web-compiler
 version: 0.1.0.0
--- synopsis:
--- description:
--- bug-reports:
+description: A web service that is a tool for teaching about computer systems.
 -- license:
 license-file: LICENSE
 author: Job Hernandez
