@@ -51,7 +51,8 @@ import ToMon (
   toMon
   )
 
-type API = "api" :> "expression" :> "parser" :> ReqBody '[JSON] ExprInfo :> Post '[JSON] ParseResponse
+type API = "api" :> "expression" :> "ast" :> ReqBody '[JSON] ExprInfo :> Post '[JSON] ParseResponse
+      :<|> "api" :> "expression" :> "monadic" :> ReqBody '[JSON] ExprInfo :> Post '[JSON] MonadicResponse
 
 data ExprInfo = ExprInfo {
   expr :: String
@@ -61,7 +62,12 @@ data ParseResponse = ParseResponse {
   parseExp :: String 
   } deriving (Generic, Show)
 
+data MonadicResponse = MonadicResponse {
+  monExp :: String 
+  } deriving (Generic, Show)
+
 instance FromJSON ExprInfo
+instance ToJSON MonadicResponse
 instance ToJSON ParseResponse
 
 parserClient :: ExprInfo -> ParseResponse
@@ -69,11 +75,22 @@ parserClient exp =
   ParseResponse  (show exp') where
   exp' = pyhs (lexer (expr exp))
 
+monadicClient :: ExprInfo -> MonadicResponse
+monadicClient exp =
+  MonadicResponse (show exp') where
+  exp' = toMon ast 0 where
+    ast = pyhs (lexer (expr exp))
+
 compilerService :: Server API
-compilerService = parsePOST
+compilerService =
+  parsePOST
+  :<|> monadicPOST
   where
     parsePOST :: ExprInfo -> Servant.Handler ParseResponse
     parsePOST exp = return (parserClient exp)
+
+    monadicPOST :: ExprInfo -> Servant.Handler MonadicResponse
+    monadicPOST exp = return (monadicClient exp)
 
 compilerAPI :: Proxy API
 compilerAPI = Proxy
