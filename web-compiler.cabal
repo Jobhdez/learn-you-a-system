@@ -31,7 +31,7 @@ library
 executable web-service
   main-is: WebService.hs
   hs-source-dirs:
-      app
+      web-service
   build-depends:
       base,
       web-compiler,
