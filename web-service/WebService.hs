@@ -144,12 +144,17 @@ compilerService pool =
     parsePOST exp = do
       let ast = pyhs (lexer (expr exp))
       liftIO $ withResource pool $ \conn ->
-        execute conn "INSERT INTO ast_e (input, ast) VALUES (?, ?)" (toJSON (expr exp), toJSON ast)
+        execute conn "INSERT INTO ast_e (input, ast) VALUES (?, ?)" (toJSON (show (expr exp)), toJSON (show ast))
       return (parserClient exp)
 
 
     monadicPOST :: ExprInfo -> Servant.Handler MonadicResponse
-    monadicPOST exp = return (monadicClient exp)
+    monadicPOST exp = do
+      let ast = pyhs (lexer (expr exp))
+      let mon = toMon ast 0
+      liftIO $ withResource pool $ \conn ->
+        execute conn "INSERT INTO mon_e (input, ast, mon) VALUES (?, ?, ?)" (toJSON (show (expr exp)), toJSON (show ast), toJSON (show mon))
+      return (monadicClient exp)
 
     selectPOST :: ExprInfo -> Servant.Handler SelectInstructionResponse
     selectPOST exp = return (selectInstructionClient exp)
