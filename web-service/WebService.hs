@@ -51,8 +51,13 @@ import ToMon (
   toMon
   )
 
+import ToSelect (
+  toSelect
+  )
+
 type API = "api" :> "expression" :> "ast" :> ReqBody '[JSON] ExprInfo :> Post '[JSON] ParseResponse
       :<|> "api" :> "expression" :> "monadic" :> ReqBody '[JSON] ExprInfo :> Post '[JSON] MonadicResponse
+      :<|> "api" :> "expression" :> "selection" :> ReqBody '[JSON] ExprInfo :> Post '[JSON] SelectInstructionResponse
 
 data ExprInfo = ExprInfo {
   expr :: String
@@ -66,9 +71,15 @@ data MonadicResponse = MonadicResponse {
   monExp :: String 
   } deriving (Generic, Show)
 
+
+data SelectInstructionResponse = SelectInstructionResponse {
+  selectExp :: String 
+  } deriving (Generic, Show)
+
 instance FromJSON ExprInfo
 instance ToJSON MonadicResponse
 instance ToJSON ParseResponse
+instance ToJSON SelectInstructionResponse
 
 parserClient :: ExprInfo -> ParseResponse
 parserClient exp =
@@ -81,10 +92,21 @@ monadicClient exp =
   exp' = toMon ast 0 where
     ast = pyhs (lexer (expr exp))
 
+selectInstructionClient :: ExprInfo -> SelectInstructionResponse
+selectInstructionClient exp =
+  SelectInstructionResponse (show exp')
+  where
+    exp' = toSelect mon
+      where
+        mon = toMon ast 0
+          where
+            ast = pyhs (lexer (expr exp))
+
 compilerService :: Server API
 compilerService =
   parsePOST
   :<|> monadicPOST
+  :<|> selectPOST
   where
     parsePOST :: ExprInfo -> Servant.Handler ParseResponse
     parsePOST exp = return (parserClient exp)
@@ -92,6 +114,9 @@ compilerService =
     monadicPOST :: ExprInfo -> Servant.Handler MonadicResponse
     monadicPOST exp = return (monadicClient exp)
 
+    selectPOST :: ExprInfo -> Servant.Handler SelectInstructionResponse
+    selectPOST exp = return (selectInstructionClient exp)
+    
 compilerAPI :: Proxy API
 compilerAPI = Proxy
 
