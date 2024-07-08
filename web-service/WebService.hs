@@ -59,6 +59,7 @@ type API = "api" :> "expression" :> "ast" :> ReqBody '[JSON] ExprInfo :> Post '[
       :<|> "api" :> "expression" :> "monadic" :> ReqBody '[JSON] ExprInfo :> Post '[JSON] MonadicResponse
       :<|> "api" :> "expression" :> "selection" :> ReqBody '[JSON] ExprInfo :> Post '[JSON] SelectInstructionResponse
       :<|> "api" :> "expression" :> "ast" :> "exps" :> Get '[JSON] [AstRecord]
+      :<|> "api" :> "expression" :> "monadic" :> "exps" :> Get '[JSON] [MonRecord]
 
 data ExprInfo = ExprInfo {
   expr :: String
@@ -81,7 +82,13 @@ data AstRecord = AstRecord {
   input :: Value,
   ast :: Value
   } deriving (Generic, Show)
-  
+
+data MonRecord = MonRecord {
+  monInput :: Value,
+  monAst :: Value,
+  monExpr :: Value
+  } deriving (Generic, Show)
+
 instance FromJSON ExprInfo
 
 instance ToJSON MonadicResponse
@@ -94,6 +101,11 @@ instance ToJSON AstRecord
 instance FromJSON AstRecord
 instance FromRow AstRecord where
   fromRow = AstRecord <$> field <*> field
+
+instance ToJSON MonRecord
+instance FromJSON MonRecord
+instance FromRow MonRecord where
+  fromRow = MonRecord <$> field <*> field <*> field
 
 connectionInfo :: ConnectInfo
 connectionInfo =
@@ -147,6 +159,7 @@ compilerService pool =
   :<|> monadicPOST
   :<|> selectPOST
   :<|> astExpsGET
+  :<|> monExpsGET
   where
     parsePOST :: ExprInfo -> Servant.Handler ParseResponse
     parsePOST exp = do
@@ -178,6 +191,13 @@ compilerService pool =
       exps <- liftIO $ withResource pool $ \conn ->
         query_ conn "SELECT input, ast FROM ast_e"
       return exps
+      
+    monExpsGET :: Servant.Handler [MonRecord]
+    monExpsGET = do
+      exps <- liftIO $ withResource pool $ \conn ->
+        query_ conn "SELECT input, ast, mon FROM mon_e"
+      return exps
+
     
 compilerAPI :: Proxy API
 compilerAPI = Proxy
