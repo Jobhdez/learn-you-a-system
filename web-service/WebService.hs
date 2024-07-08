@@ -58,6 +58,7 @@ import ToSelect (
 type API = "api" :> "expression" :> "ast" :> ReqBody '[JSON] ExprInfo :> Post '[JSON] ParseResponse
       :<|> "api" :> "expression" :> "monadic" :> ReqBody '[JSON] ExprInfo :> Post '[JSON] MonadicResponse
       :<|> "api" :> "expression" :> "selection" :> ReqBody '[JSON] ExprInfo :> Post '[JSON] SelectInstructionResponse
+      :<|> "api" :> "expression" :> "ast" :> "exps" :> Get '[JSON] [AstRecord]
 
 data ExprInfo = ExprInfo {
   expr :: String
@@ -79,12 +80,18 @@ data SelectInstructionResponse = SelectInstructionResponse {
 data AstRecord = AstRecord {
   input :: Value,
   ast :: Value
-  }
+  } deriving (Generic, Show)
+  
 instance FromJSON ExprInfo
+
 instance ToJSON MonadicResponse
+
 instance ToJSON ParseResponse
+
 instance ToJSON SelectInstructionResponse
 
+instance ToJSON AstRecord
+instance FromJSON AstRecord
 instance FromRow AstRecord where
   fromRow = AstRecord <$> field <*> field
 
@@ -139,6 +146,7 @@ compilerService pool =
   parsePOST
   :<|> monadicPOST
   :<|> selectPOST
+  :<|> astExpsGET
   where
     parsePOST :: ExprInfo -> Servant.Handler ParseResponse
     parsePOST exp = do
@@ -164,6 +172,12 @@ compilerService pool =
       liftIO $ withResource pool $ \conn ->
         execute conn "INSERT INTO select_e (input, ast, mon, select_exp) VALUES (?,?,?,?)" (toJSON (show (expr exp)), toJSON (show ast), toJSON (show mon), toJSON (show ss))
       return (selectInstructionClient exp)
+
+    astExpsGET :: Servant.Handler [AstRecord]
+    astExpsGET = do
+      exps <- liftIO $ withResource pool $ \conn ->
+        query_ conn "SELECT input, ast FROM ast_e"
+      return exps
     
 compilerAPI :: Proxy API
 compilerAPI = Proxy
