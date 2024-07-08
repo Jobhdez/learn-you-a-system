@@ -76,11 +76,43 @@ data SelectInstructionResponse = SelectInstructionResponse {
   selectExp :: String 
   } deriving (Generic, Show)
 
+data AstRecord = AstRecord {
+  input :: Value,
+  ast :: Value
+  }
 instance FromJSON ExprInfo
 instance ToJSON MonadicResponse
 instance ToJSON ParseResponse
 instance ToJSON SelectInstructionResponse
 
+instance FromRow AstRecord where
+  fromRow = AstRecord <$> field <*> field
+
+connectionInfo :: ConnectInfo
+connectionInfo =
+  defaultConnectInfo { connectHost = "127.0.0.1",
+                       connectPort = 5432,
+                       connectUser = "pyhs",
+                       connectPassword = "hello123",
+                       connectDatabase= "compiler_web"
+                     }
+initDB :: ConnectInfo -> IO ()
+initDB conn = bracket (connect conn) close $ \con -> do
+
+    let createTable1 = "CREATE TABLE IF NOT EXISTS select_e (id SERIAL PRIMARY KEY, input JSONB, ast JSONB, mon JSONB, select_exp JSONB)"
+    let createTable2 = "CREATE TABLE IF NOT EXISTS ast_e (id SERIAL PRIMARY KEY, input JSONB, ast JSONB)"
+    let createTable3 = "CREATE TABLE IF NOT EXISTS mon_e (id SERIAL PRIMARY KEY, input JSONB, ast JSONB, mon JSONB)"
+    
+    _ <- execute_ con createTable1
+    _ <- execute_ con createTable2
+    _ <- execute_ con createTable3
+
+    return ()
+
+myPool :: IO (Pool Connection)
+myPool = createPool (connect connectionInfo) close 1 10 10
+
+  
 parserClient :: ExprInfo -> ParseResponse
 parserClient exp =
   ParseResponse  (show exp') where
@@ -102,14 +134,19 @@ selectInstructionClient exp =
           where
             ast = pyhs (lexer (expr exp))
 
-compilerService :: Server API
-compilerService =
+compilerService :: Pool Connection -> Server API
+compilerService pool =
   parsePOST
   :<|> monadicPOST
   :<|> selectPOST
   where
     parsePOST :: ExprInfo -> Servant.Handler ParseResponse
-    parsePOST exp = return (parserClient exp)
+    parsePOST exp = do
+      let ast = pyhs (lexer (expr exp))
+      liftIO $ withResource pool $ \conn ->
+        execute conn "INSERT INTO ast_e (input, ast) VALUES (?, ?)" (toJSON (expr exp), toJSON ast)
+      return (parserClient exp)
+
 
     monadicPOST :: ExprInfo -> Servant.Handler MonadicResponse
     monadicPOST exp = return (monadicClient exp)
@@ -120,8 +157,11 @@ compilerService =
 compilerAPI :: Proxy API
 compilerAPI = Proxy
 
-service1 :: Application
-service1 = serve compilerAPI compilerService
+service1 :: Pool Connection -> Application
+service1 pool = serve compilerAPI (compilerService pool)
 
 main :: IO ()
-main = run 8081 service1
+main = do
+  pool <- myPool
+  initDB connectionInfo
+  run 8081 (service1 pool)
