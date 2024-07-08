@@ -157,7 +157,13 @@ compilerService pool =
       return (monadicClient exp)
 
     selectPOST :: ExprInfo -> Servant.Handler SelectInstructionResponse
-    selectPOST exp = return (selectInstructionClient exp)
+    selectPOST exp = do
+      let ast = pyhs (lexer (expr exp))
+      let mon = toMon ast 0
+      let ss = toSelect mon
+      liftIO $ withResource pool $ \conn ->
+        execute conn "INSERT INTO select_e (input, ast, mon, select_exp) VALUES (?,?,?,?)" (toJSON (show (expr exp)), toJSON (show ast), toJSON (show mon), toJSON (show ss))
+      return (selectInstructionClient exp)
     
 compilerAPI :: Proxy API
 compilerAPI = Proxy
