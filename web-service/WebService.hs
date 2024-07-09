@@ -64,6 +64,8 @@ type API = "api" :> "expression" :> "ast" :> ReqBody '[JSON] ExprInfo :> Post '[
       :<|> "api" :> "expression" :> "ast" :> "exp" :> Capture "id" Int :> Get '[JSON] [AstRecord]
       :<|> "api" :> "expression" :> "mon" :> "exp" :> Capture "id" Int :> Get '[JSON] [MonRecord]
       :<|> "api" :> "expression" :> "selection" :> "exp" :> Capture "id" Int :> Get '[JSON] [SelectRecord]
+      :<|> "api" :> "expression" :> "ast" :> "exp" :> Capture "id" Int :> Delete '[JSON] ()
+      :<|> "api" :> "expression" :> "mon" :> "exp" :> Capture "id" Int :> Delete '[JSON] ()
       
 data ExprInfo = ExprInfo {
   expr :: String
@@ -181,6 +183,8 @@ compilerService pool =
   :<|> astExpById
   :<|> monExpById
   :<|> selectExpById
+  :<|> astExpDELETE
+  :<|> monExpDELETE
   where
     parsePOST :: ExprInfo -> Servant.Handler ParseResponse
     parsePOST exp = do
@@ -243,6 +247,18 @@ compilerService pool =
       entry <- liftIO $ withResource pool $ \conn ->
         query conn "SELECT input, ast, mon, select_exp FROM select_e WHERE id=?" (Only id)
       return entry
+
+    astExpDELETE :: Int -> Servant.Handler ()
+    astExpDELETE id = do
+      liftIO $ withResource pool $ \conn ->
+        execute conn "DELETE FROM ast_e WHERE id=?" (Only id)
+      return ()
+
+    monExpDELETE :: Int -> Servant.Handler ()
+    monExpDELETE id = do
+      liftIO $ withResource pool $ \conn ->
+        execute conn "DELETE FROM mon_e WHERE id=?" (Only id)
+      return ()
       
 compilerAPI :: Proxy API
 compilerAPI = Proxy
