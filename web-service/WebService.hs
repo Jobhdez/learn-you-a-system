@@ -62,6 +62,7 @@ type API = "api" :> "expression" :> "ast" :> ReqBody '[JSON] ExprInfo :> Post '[
       :<|> "api" :> "expression" :> "monadic" :> "exps" :> Get '[JSON] [MonRecord]
       :<|> "api" :> "expression" :> "selection" :> "exps" :> Get '[JSON] [SelectRecord]
       :<|> "api" :> "expression" :> "ast" :> "exp" :> Capture "id" Int :> Get '[JSON] [AstRecord]
+      :<|> "api" :> "expression" :> "mon" :> "exp" :> Capture "id" Int :> Get '[JSON] [MonRecord]
       
 data ExprInfo = ExprInfo {
   expr :: String
@@ -176,6 +177,7 @@ compilerService pool =
   :<|> monExpsGET
   :<|> selectExpsGET
   :<|> astExpById
+  :<|> monExpById
   where
     parsePOST :: ExprInfo -> Servant.Handler ParseResponse
     parsePOST exp = do
@@ -225,6 +227,12 @@ compilerService pool =
     astExpById id = do
       entry <- liftIO $ withResource pool $ \conn ->
         query conn "SELECT input, ast FROM ast_e WHERE id=?" (Only id)
+      return entry
+
+    monExpById :: Int -> Servant.Handler [MonRecord]
+    monExpById id = do
+      entry <- liftIO $ withResource pool $ \conn ->
+        query conn "SELECT input, ast, mon FROM mon_e WHERE id=?" (Only id)
       return entry
       
 compilerAPI :: Proxy API
