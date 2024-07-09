@@ -66,6 +66,7 @@ type API = "api" :> "expression" :> "ast" :> ReqBody '[JSON] ExprInfo :> Post '[
       :<|> "api" :> "expression" :> "selection" :> "exp" :> Capture "id" Int :> Get '[JSON] [SelectRecord]
       :<|> "api" :> "expression" :> "ast" :> "exp" :> Capture "id" Int :> Delete '[JSON] ()
       :<|> "api" :> "expression" :> "mon" :> "exp" :> Capture "id" Int :> Delete '[JSON] ()
+      :<|> "api" :> "expression" :> "selection" :> "exp" :> Capture "id" Int :> Delete '[JSON] ()
       
 data ExprInfo = ExprInfo {
   expr :: String
@@ -185,6 +186,7 @@ compilerService pool =
   :<|> selectExpById
   :<|> astExpDELETE
   :<|> monExpDELETE
+  :<|> selectExpDELETE
   where
     parsePOST :: ExprInfo -> Servant.Handler ParseResponse
     parsePOST exp = do
@@ -258,6 +260,13 @@ compilerService pool =
     monExpDELETE id = do
       liftIO $ withResource pool $ \conn ->
         execute conn "DELETE FROM mon_e WHERE id=?" (Only id)
+      return ()
+
+    
+    selectExpDELETE :: Int -> Servant.Handler ()
+    selectExpDELETE id = do
+      liftIO $ withResource pool $ \conn ->
+        execute conn "DELETE FROM select_e WHERE id=?" (Only id)
       return ()
       
 compilerAPI :: Proxy API
